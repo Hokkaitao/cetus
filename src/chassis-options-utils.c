@@ -1539,3 +1539,16 @@ show_ssl(gpointer param) {
     }
     return NULL;
 }
+
+gchar*
+show_temporary_file(gpointer param) {
+    struct external_param *opt_param = (struct external_param *)param;
+    chassis *srv = opt_param->chas;
+    gint opt_type = opt_param->opt_type;
+    if (CAN_SHOW_OPTS_PROPERTY(opt_type) || CAN_SAVE_OPTS_PROPERTY(opt_type)) {
+        if(srv->temporary_file) {
+            return g_strdup(srv->temporary_file);
+        }
+    }
+    return NULL;
+}

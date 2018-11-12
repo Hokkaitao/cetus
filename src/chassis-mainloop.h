@@ -220,6 +220,7 @@ struct chassis {
 
     struct sql_log_mgr *sql_mgr;
     gint check_dns;
+    gchar *temporary_file;
 };
 
 CHASSIS_API chassis *chassis_new(void);

@@ -114,6 +114,7 @@ chassis_new()
     chas->group_replication_mode = 0;
 
     chas->sql_mgr = sql_log_alloc();
+    chas->temporary_file = NULL;
 
     return chas;
 }
@@ -255,6 +256,10 @@ chassis_free(chassis *chas)
 
     if(chas->sql_mgr) {
         sql_log_free(chas->sql_mgr);
+    }
+
+    if(chas->temporary_file) {
+        g_free(chas->temporary_file);
     }
 
     g_free(chas);

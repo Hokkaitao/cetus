@@ -264,3 +264,82 @@ load_config_from_temporary_file(chassis *chas) {
     }
     return TRUE;
 }
+
+static gboolean
+save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
+    gboolean ret = FALSE;
+    gchar *json = NULL;
+    read_config_json_from_local(chas->temporary_file, &json);
+    cJSON *root = NULL;
+    if(json) {
+        root = cJSON_Parse(json);
+        g_free(json);
+    } else {
+        root = cJSON_CreateObject();
+    }
+    cJSON *config_node = cJSON_GetObjectItem(root, "config");
+    if(!config_node) {
+        config_node = cJSON_CreateArray();
+        cJSON *node = cJSON_CreateObject();
+        cJSON_AddStringToObject(node, "key", key);
+        cJSON_AddStringToObject(node, "value", value);
+        cJSON_AddItemToObject(root, "config", config_node);
+        cJSON_AddItemToArray(config_node, node);
+        goto save;
+    }
+    cJSON *key_node = config_node->child;
+    if(!key_node) {
+        cJSON_Delete(root);
+        return FALSE;
+    }
+    for(;key_node; key_node = key_node->next) {
+        cJSON *keyjson = cJSON_GetObjectItem(key_node, "key");
+        if (!keyjson) {
+            g_critical(G_STRLOC ": config error, no key");
+            break;
+        }
+        if(strcasecmp(key, keyjson->valuestring) == 0) {
+            cJSON *valuejson = cJSON_GetObjectItem(key_node, "value");
+            if(strcasecmp(value, valuejson->valuestring) != 0) {
+                cJSON_DeleteItemFromObject(key_node, "value");
+                cJSON_AddItemToObject(key_node, "value", cJSON_CreateString(value));
+                goto save;
+            } else {
+                cJSON_Delete(root);
+                return TRUE;
+            }
+        }
+    }
+
+    cJSON *node = cJSON_CreateObject();
+    cJSON_AddStringToObject(node, "key", key);
+    cJSON_AddStringToObject(node, "value", value);
+    cJSON_AddItemToArray(config_node, node);
+
+save:
+    ret = write_config_json_to_local(chas->temporary_file, cJSON_Print(root));
+    cJSON_Delete(root);
+    return ret;
+}
+
+gboolean config_set_local_options_by_key(chassis *chas, gchar *key) {
+    if(!key) return ASSIGN_ERROR;
+    GList *options = g_list_copy(chas->options->options);
+    GList *l = NULL;
+    for(l = options; l; l = l->next) {
+        chassis_option_t *opt = l->data;
+        if(strcasecmp(key, opt->long_name) == 0) {
+            struct external_param param = {0};
+            param.chas = chas;
+            param.opt_type = SAVE_OPTS_PROPERTY;
+            gchar *value = opt->show_hook != NULL? opt->show_hook(&param) : NULL;
+            if(!value) {
+                return TRUE;
+            }
+            gboolean ret = save_config_to_temporary_file(chas, key, value);
+            g_free(value);
+            return ret;
+        }
+    }
+    return FALSE;
+}

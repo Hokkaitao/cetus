@@ -17,6 +17,5 @@ typedef enum {
 }config_type_t;
 //config
 gboolean load_config_from_temporary_file(chassis *chas);
-
-
+gboolean config_set_local_options_by_key(chassis *chas, gchar *key); 
 #endif

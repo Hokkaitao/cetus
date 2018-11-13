@@ -104,6 +104,7 @@
 "QUERY" return TK_QUERY;
 "REMOVE" return TK_REMOVE;
 "BACKEND" return TK_BACKEND;
+"LOAD" return TK_LOAD;
 
 "@@" return TK_GLOBAL;
 "version_comment" return TK_VERSION_COMMENT;

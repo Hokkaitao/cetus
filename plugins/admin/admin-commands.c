@@ -2253,3 +2253,17 @@ void admin_select_version_comment(network_mysqld_con* con) {
     network_mysqld_proto_fielddefs_free(fields);
     g_ptr_array_free(rows, TRUE);
 }
+
+void load_config(network_mysqld_con* con) {
+    if (con->is_admin_client) {
+        con->ask_one_worker = 1;
+        return;
+    }
+    gboolean ret = load_config_from_temporary_file(con->srv);
+    if(ret) {
+        network_mysqld_con_send_ok_full(con->client, 0, 0, SERVER_STATUS_AUTOCOMMIT, 0);
+    } else {
+        network_mysqld_con_send_error(con->client, C("load config failed."));
+
+    }
+}

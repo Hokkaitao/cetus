@@ -151,6 +151,5 @@ int network_backends_used_conns(network_backends_t *);
 
 int network_backend_check_available_rw(network_backends_t *, GString *);
 
-gboolean network_backend_load_master(chassis *chas, gchar **backend_addresses);
-gboolean network_backend_load_slave(chassis *chas, gchar **backend_addresses);
+gboolean network_backend_load(chassis *chas, gchar **backend_addresses, backend_type_t type);
 #endif /* _BACKEND_H_ */

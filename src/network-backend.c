@@ -681,30 +681,48 @@ network_backend_check_available_rw(network_backends_t *bs, GString *name)
     }
 }
 
-gboolean network_backend_load_master(chassis *chas, gchar **backend_addresses) {
-    chassis_private *g = chas->priv;
+gboolean network_backend_load(chassis *chas, gchar **backend_addresses, backend_type_t type) {
+    GList *list = NULL;
     gint i = 0;
+    for(i=0; backend_addresses[i]; i++) {
+        list = g_list_append(list, g_strdup(backend_addresses[i]));
+    }
+    if(g_list_length(list) <= 0) {
+        return TRUE;
+    }
+    chassis_private *g = chas->priv;
+    gint backends_num = network_backends_count(g->backends);
+    GList *it = NULL;
+    for(i=0; i<backends_num; i++) {
+        network_backend_t *backend = network_backends_get(g->backends, i);
+        it = g_list_find(list, backend->address->str);
+        if(it) {
+            if(backend->type != type) {
+                network_backends_modify(g->backends, i, type, backend->state, NO_PREVIOUS_STATE);
+            }
+            list = g_list_remove_link(list, it);
+            g_free(it->data);
+            g_list_free(it);
+        } else {
+            if(backend->type == type) {
+                network_backends_remove(g->backends, i);
+            }
+        }
+    }
     GPtrArray *backends_arr = g->backends->backends;
-    for (i = 0; backend_addresses[i]; i++) {
-        if (BACKEND_OPERATE_SUCCESS != network_backends_add(g->backends, backend_addresses[i], BACKEND_TYPE_RW, BACKEND_STATE_UNKNOWN, chas)) {
-            g_critical("load node: %s failed.", backend_addresses[i]);
+    for (it=list; it; it = it->next) {
+        if(BACKEND_OPERATE_SUCCESS != network_backends_add(g->backends, it->data, type, BACKEND_STATE_UNKNOWN, chas)) {
+            list = g_list_remove_link(list, it);
+            g_free(it->data);
+            g_list_free(it);
+            g_critical("load node: %s failed.", it->data);
             continue;
         }
         network_backend_init_extra(backends_arr->pdata[backends_arr->len - 1], chas);
+        list = g_list_remove_link(list, it);
+        g_free(it->data);
+        g_list_free(it);
     }
-    return TRUE;
-}
-
-gboolean network_backend_load_slave(chassis *chas, gchar **backend_addresses) {
-    chassis_private *g = chas->priv;
-    gint i = 0;
-    GPtrArray *backends_arr = g->backends->backends;
-    for (i = 0; backend_addresses[i]; i++) {
-        if (BACKEND_OPERATE_SUCCESS != network_backends_add(g->backends, backend_addresses[i], BACKEND_TYPE_RO, BACKEND_STATE_UNKNOWN, chas)) {
-            g_critical("load node: %s failed.", backend_addresses[i]);
-            continue;
-        }
-        network_backend_init_extra(backends_arr->pdata[backends_arr->len - 1], chas);
-    }
+    g_list_free(list);
     return TRUE;
 }

@@ -746,11 +746,11 @@ void admin_acl_add_rule(network_mysqld_con *con, gboolean is_white, char *addr)
         network_mysqld_con_send_ok_full(con->client, affected,
                                         0, SERVER_STATUS_AUTOCOMMIT, 0);        
     } else {
-        gint ret = CHANGE_SAVE_ERROR;
-        gint effected_rows = 0;
-        if (affected)
-            ret = save_setting(chas, &effected_rows);
-        send_result(con->client, ret, affected);
+        if(config_set_local_options_by_key(con->srv, is_white? "proxy-allow-ip" : "proxy-deny-ip")) {
+            network_mysqld_con_send_ok_full(con->client, 1, 0, SERVER_STATUS_AUTOCOMMIT, 0);
+        } else {
+            network_mysqld_con_send_error(con->client,C("add rule is set locally but cannot save to temporary file"));
+        }
     }
 }
 
@@ -766,11 +766,11 @@ void admin_acl_delete_rule(network_mysqld_con *con, gboolean is_white, char *add
         network_mysqld_con_send_ok_full(con->client, affected,
                                         0, SERVER_STATUS_AUTOCOMMIT, 0);
     } else {
-        gint ret = CHANGE_SAVE_ERROR;
-        gint effected_rows = 0;
-        if (affected)
-            ret = save_setting(chas, &effected_rows);
-        send_result(con->client, ret, affected);
+        if(config_set_local_options_by_key(con->srv, is_white? "proxy-allow-ip" : "proxy-deny-ip")) {
+            network_mysqld_con_send_ok_full(con->client, 1, 0, SERVER_STATUS_AUTOCOMMIT, 0); 
+        } else {
+            network_mysqld_con_send_error(con->client,C("delete rule is set locally but cannot save to temporary file"));
+        }
     }
 }
 
@@ -1469,7 +1469,7 @@ void admin_set_config(network_mysqld_con* con, char* key, char* value)
             if(config_set_local_options_by_key(con->srv, key)) {
                 network_mysqld_con_send_ok_full(con->client, 1, 0, SERVER_STATUS_AUTOCOMMIT, 0);
             } else {
-                network_mysqld_con_send_error(con->client,C("Variable is set locally but cannot replace remote settings"));
+                network_mysqld_con_send_error(con->client,C("Variable is set locally but cannot save to temporary file"));
             }
         }
     } else if(ASSIGN_NOT_SUPPORT == ret){

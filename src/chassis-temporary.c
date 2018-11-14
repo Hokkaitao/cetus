@@ -267,7 +267,7 @@ load_config_from_temporary_file(chassis *chas) {
 
 static gboolean
 save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
-    gboolean ret = FALSE;
+    gboolean ret = TRUE;
     gchar *json = NULL;
     read_config_json_from_local(chas->temporary_file, &json);
     cJSON *root = NULL;
@@ -279,6 +279,9 @@ save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
     }
     cJSON *config_node = cJSON_GetObjectItem(root, "config");
     if(!config_node) {
+        if(!value) {
+            goto exit;
+        }
         config_node = cJSON_CreateArray();
         cJSON *node = cJSON_CreateObject();
         cJSON_AddStringToObject(node, "key", key);
@@ -299,6 +302,11 @@ save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
             break;
         }
         if(strcasecmp(key, keyjson->valuestring) == 0) {
+            if(!value) {
+                cJSON_DeleteItemFromObject(key_node, "value");
+                cJSON_DeleteItemFromObject(key_node, "key");
+                goto save;
+            }
             cJSON *valuejson = cJSON_GetObjectItem(key_node, "value");
             if(strcasecmp(value, valuejson->valuestring) != 0) {
                 cJSON_DeleteItemFromObject(key_node, "value");
@@ -311,6 +319,9 @@ save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
         }
     }
 
+    if(!value) {
+        goto exit;
+    }
     cJSON *node = cJSON_CreateObject();
     cJSON_AddStringToObject(node, "key", key);
     cJSON_AddStringToObject(node, "value", value);
@@ -318,6 +329,7 @@ save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
 
 save:
     ret = write_config_json_to_local(chas->temporary_file, cJSON_Print(root));
+exit:
     cJSON_Delete(root);
     return ret;
 }
@@ -333,9 +345,6 @@ gboolean config_set_local_options_by_key(chassis *chas, gchar *key) {
             param.chas = chas;
             param.opt_type = SAVE_OPTS_PROPERTY;
             gchar *value = opt->show_hook != NULL? opt->show_hook(&param) : NULL;
-            if(!value) {
-                return TRUE;
-            }
             gboolean ret = save_config_to_temporary_file(chas, key, value);
             g_free(value);
             return ret;

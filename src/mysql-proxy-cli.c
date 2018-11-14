@@ -1261,6 +1261,8 @@ main_cmdline(int argc, char **argv)
         }
     }
 
+    load_config_from_temporary_file(srv);
+
     if (chassis_mainloop(srv)) {
         /* looks like we failed */
         g_critical("%s: Failure from chassis_mainloop. Shutting down.", G_STRLOC);

@@ -105,6 +105,7 @@
 "REMOVE" return TK_REMOVE;
 "BACKEND" return TK_BACKEND;
 "LOAD" return TK_LOAD;
+"FLUSH" return TK_FLUSH;
 
 "@@" return TK_GLOBAL;
 "version_comment" return TK_VERSION_COMMENT;

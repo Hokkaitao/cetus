@@ -357,3 +357,42 @@ gboolean config_set_local_options_by_key(chassis *chas, gchar *key) {
     }
     return FALSE;
 }
+
+gboolean sync_config_to_file(chassis *chas, gint *effected_rows) {
+    GKeyFile *keyfile = g_key_file_new();
+    g_key_file_set_list_separator(keyfile, ',');
+    GString *free_path = g_string_new(NULL);
+    if(chas->default_file == NULL) {
+        free_path = g_string_append(free_path, chas->conf_dir);
+        free_path = g_string_append(free_path, "/default.conf");
+        chas->default_file = g_strdup(free_path->str);
+    }
+    if(!g_path_is_absolute(chas->default_file)) {
+        gchar * current_dir =  g_get_current_dir();
+        free_path = g_string_append(free_path, current_dir);
+        free_path = g_string_append(free_path, "/");
+        free_path = g_string_append(free_path, chas->default_file);
+        g_free(chas->default_file);
+        chas->default_file = g_strdup(free_path->str);
+        g_free(current_dir);
+    }
+    if(free_path) {
+        g_string_free(free_path, TRUE);
+    }
+    *effected_rows = chassis_options_save(keyfile, chas->options, chas);
+    gsize file_size = 0;
+    gchar *file_buf = g_key_file_to_data(keyfile, &file_size, NULL);
+    g_key_file_free(keyfile);
+    GError *gerr = NULL;
+    if (FALSE == g_file_set_contents(chas->default_file, file_buf, file_size, &gerr)) {
+        g_clear_error(&gerr);
+        return FALSE;
+    } else {
+        if(chmod(chas->default_file, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)) {
+            g_debug("chmod operate failed, filename:%s, errno:%d",
+                    (chas->default_file == NULL? "":chas->default_file), errno);
+            return FALSE;
+        }
+    }
+    return TRUE;
+}

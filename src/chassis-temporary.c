@@ -295,6 +295,7 @@ save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
         cJSON_Delete(root);
         return FALSE;
     }
+    gint which = 0;
     for(;key_node; key_node = key_node->next) {
         cJSON *keyjson = cJSON_GetObjectItem(key_node, "key");
         if (!keyjson) {
@@ -305,6 +306,7 @@ save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
             if(!value) {
                 cJSON_DeleteItemFromObject(key_node, "value");
                 cJSON_DeleteItemFromObject(key_node, "key");
+                cJSON_DeleteItemFromArray(config_node, which);
                 goto save;
             }
             cJSON *valuejson = cJSON_GetObjectItem(key_node, "value");
@@ -317,6 +319,7 @@ save_config_to_temporary_file(chassis *chas, gchar *key, gchar *value) {
                 return TRUE;
             }
         }
+        which ++;
     }
 
     if(!value) {
@@ -344,9 +347,11 @@ gboolean config_set_local_options_by_key(chassis *chas, gchar *key) {
             struct external_param param = {0};
             param.chas = chas;
             param.opt_type = SAVE_OPTS_PROPERTY;
-            gchar *value = opt->show_hook != NULL? opt->show_hook(&param) : NULL;
+            gchar *value = (opt->show_hook != NULL)? opt->show_hook(&param) : NULL;
             gboolean ret = save_config_to_temporary_file(chas, key, value);
-            g_free(value);
+            if(value) {
+                g_free(value);
+            }
             return ret;
         }
     }

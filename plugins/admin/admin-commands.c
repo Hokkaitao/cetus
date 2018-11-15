@@ -892,11 +892,12 @@ void admin_set_reduce_conns(network_mysqld_con* con, int mode)
         network_mysqld_con_send_ok_full(con->client, affected,
                                         0, SERVER_STATUS_AUTOCOMMIT, 0);
     } else {
-        gint ret = CHANGE_SAVE_ERROR;
-        gint effected_rows = 0;
-        if (affected)
-            ret = save_setting(con->srv, &effected_rows);
-        send_result(con->client, ret, affected);
+        gboolean r = config_set_local_options_by_key(con->srv, "reduce-connections");
+        if(r) {
+            network_mysqld_con_send_ok_full(con->client, 1, 0, SERVER_STATUS_AUTOCOMMIT, 0);
+        } else {
+            network_mysqld_con_send_error(con->client,C("reduce_conns is set locally but cannot save to temporary file"));
+        }
     }
 }
 

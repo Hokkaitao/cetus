@@ -19,4 +19,7 @@ typedef enum {
 gboolean load_config_from_temporary_file(chassis *chas);
 gboolean config_set_local_options_by_key(chassis *chas, gchar *key); 
 gboolean sync_config_to_file(chassis *chas, gint *effected_rows);
+
+//users
+gboolean load_users_from_temporary_file(chassis *chas);
 #endif

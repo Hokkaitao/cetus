@@ -2,6 +2,7 @@
 #include "sharding-config.h"
 #include "chassis-plugin.h"
 #include "chassis-options-utils.h"
+#include "cetus-users.h"
 
 static gboolean
 rm_config_json_local(gchar *filename) {
@@ -396,3 +397,27 @@ gboolean sync_config_to_file(chassis *chas, gint *effected_rows) {
     }
     return TRUE;
 }
+
+gboolean load_users_from_temporary_file(chassis *chas) {
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC ": read config json from local failed");
+        return FALSE;
+    }
+    if(!json) {
+        return TRUE;
+    }
+    gchar *json_users = NULL;
+    if(!get_config_from_json_by_type(json, USERS_TYPE, &json_users)) {
+        g_free(json);
+        g_critical(G_STRLOC ": get users from local failed");
+        return FALSE;
+    }
+    g_free(json);
+    if(!json_users) {
+        return TRUE;
+    }
+    cetus_users_parse_json(chas->priv->users, json_users);
+    g_free(json_users);
+    return TRUE;
+}   

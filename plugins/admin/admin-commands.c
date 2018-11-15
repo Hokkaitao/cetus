@@ -2263,6 +2263,7 @@ void load_config(network_mysqld_con* con) {
         return;
     }
     gboolean ret = load_config_from_temporary_file(con->srv);
+    ret += load_users_from_temporary_file(con->srv);
     if(ret) {
         network_mysqld_con_send_ok_full(con->client, 0, 0, SERVER_STATUS_AUTOCOMMIT, 0);
     } else {

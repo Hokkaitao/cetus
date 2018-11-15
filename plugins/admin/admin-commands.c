@@ -1080,9 +1080,20 @@ void admin_update_user_password(network_mysqld_con* con, char *from_table,
     chassis_private *g = con->srv->priv;
     enum cetus_pwd_type pwd_type = password_type(from_table);
     gboolean affected = cetus_users_update_record(g->users, user, password, pwd_type);
-    if (affected)
-        cetus_users_write_json(g->users);
-    network_mysqld_con_send_ok_full(con->client, affected?1:0, 0,
+    if (affected) {
+        if(con->srv->config_manager->type == CHASSIS_CONF_MYSQL) { 
+            network_mysqld_con_send_ok_full(con->client, affected?1:0, 0,
+                                            SERVER_STATUS_AUTOCOMMIT, 0);
+        } else {
+            if(save_users_to_temporary_file(con->srv)) {
+                network_mysqld_con_send_ok_full(con->client, affected?1:0, 0,
+                                               SERVER_STATUS_AUTOCOMMIT, 0);
+            } else {
+                network_mysqld_con_send_error(con->client, C("update user password success, but save to temporary file failed"));
+            }
+        }
+    }
+    network_mysqld_con_send_ok_full(con->client, 0, 0,
                                     SERVER_STATUS_AUTOCOMMIT, 0);
 }
 

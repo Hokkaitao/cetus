@@ -31,6 +31,10 @@ read_config_json_from_local(gchar *filename, gchar **str) {
         g_clear_error(&err);
         return FALSE;
     }
+    if(buffer && strlen(buffer) == 0) {
+        g_free(buffer);
+        buffer = NULL;
+    }
     *str = buffer;
     return TRUE;
 }
@@ -421,3 +425,46 @@ gboolean load_users_from_temporary_file(chassis *chas) {
     g_free(json_users);
     return TRUE;
 }   
+
+gboolean save_users_to_temporary_file(chassis *chas) {
+    cetus_users_t *users = chas->priv->users;
+
+    cJSON *users_node = cJSON_CreateArray();
+    if (!users_node) {
+        g_warning(G_STRLOC ":users_node is nil");
+        return FALSE;
+    }
+    GHashTableIter iter;
+    char *username = NULL;
+    struct pwd_pair_t *pwd = NULL;
+    g_hash_table_iter_init(&iter, users->records);
+    while (g_hash_table_iter_next(&iter, (gpointer *) & username, (gpointer *) & pwd)) {
+        cJSON *node = cJSON_CreateObject();
+        cJSON_AddStringToObject(node, "user", username);
+        cJSON_AddStringToObject(node, "client_pwd", pwd->client);
+        cJSON_AddStringToObject(node, "server_pwd", pwd->server);
+        cJSON_AddItemToArray(users_node, node);
+    }
+    
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC "read config from temporary file failed");
+        cJSON_Delete(users_node);
+        return FALSE;
+    }
+    cJSON *root = NULL;
+    if(!json) {
+        root = cJSON_CreateObject();
+    } else {
+        root = cJSON_Parse(json);
+        g_free(json);
+    }
+    cJSON *users_node_old = cJSON_GetObjectItem(root, "users");
+    if(users_node_old) {
+        cJSON_DeleteItemFromObject(root, "users");
+    }
+    cJSON_AddItemToObject(root, "users", users_node);
+    gboolean r = write_config_json_to_local(chas->temporary_file, cJSON_Print(root));
+    cJSON_Delete(root);
+    return r;
+}

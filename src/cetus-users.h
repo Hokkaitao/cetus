@@ -35,6 +35,11 @@ enum cetus_pwd_type {
     CETUS_SERVER_PWD,
 };
 
+struct pwd_pair_t {                                                                          
+    char *client;                                                                            
+    char *server;                                                                            
+};
+
 cetus_users_t *cetus_users_new();
 
 void cetus_users_free(cetus_users_t *users);

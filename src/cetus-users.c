@@ -26,11 +26,6 @@
 #include "cetus-util.h"
 #include "chassis-config.h"
 
-struct pwd_pair_t {
-    char *client;
-    char *server;
-};
-
 static struct pwd_pair_t *
 pwd_pair_new(const char *c, const char *s)
 {

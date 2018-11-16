@@ -457,6 +457,11 @@ gboolean save_users_to_temporary_file(chassis *chas) {
         root = cJSON_CreateObject();
     } else {
         root = cJSON_Parse(json);
+        if(!root) {
+            g_warning(G_STRLOC ":root is nil");
+            g_free(json);
+            return FALSE;
+        }
         g_free(json);
     }
     cJSON *users_node_old = cJSON_GetObjectItem(root, "users");
@@ -466,5 +471,25 @@ gboolean save_users_to_temporary_file(chassis *chas) {
     cJSON_AddItemToObject(root, "users", users_node);
     gboolean r = write_config_json_to_local(chas->temporary_file, cJSON_Print(root));
     cJSON_Delete(root);
+    return r;
+}
+
+gboolean sync_users_to_file(chassis *chas, gint *effected_rows) {
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC "read config from temporary file failed");
+        return FALSE;
+    }
+    gchar *json_users = NULL;
+    gboolean ret = get_config_from_json_by_type(json, USERS_TYPE, &json_users);
+    g_free(json);
+    if(!ret) {
+        return ret;
+    }
+    if(!json_users) {
+        return TRUE;
+    }
+    gboolean r = chassis_config_write_object(chas->priv->users->conf_manager, "users", json_users);
+    g_free(json_users);
     return r;
 }

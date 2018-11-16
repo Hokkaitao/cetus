@@ -2288,7 +2288,9 @@ void flush_config(network_mysqld_con *con) {
         con->ask_one_worker = 1;
         return;
     }
-    gint rows = 0;
-    sync_config_to_file(con->srv, &rows);
-    network_mysqld_con_send_ok_full(con->client, rows, 0, SERVER_STATUS_AUTOCOMMIT, 0);
+    gint config_rows = 0;
+    sync_config_to_file(con->srv, &config_rows);
+    gint users_rows = 0;
+    sync_users_to_file(con->srv, &users_rows);
+    network_mysqld_con_send_ok_full(con->client, config_rows + users_rows, 0, SERVER_STATUS_AUTOCOMMIT, 0);
 }

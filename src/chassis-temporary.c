@@ -546,3 +546,28 @@ gboolean save_variables_to_temporary_file(chassis *chas) {
     cJSON_Delete(root);
     return r;
 }
+
+
+gboolean load_variables_from_temporary_file(chassis *chas) {
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC ": read config json from local failed");
+        return FALSE;
+    }
+    if(!json) {
+        return TRUE;
+    }
+    gchar *json_variables = NULL;
+    if(!get_config_from_json_by_type(json, VARIABLES_TYPE, &json_variables)) {
+        g_free(json);
+        g_critical(G_STRLOC ": get users from local failed");
+        return FALSE;
+    }
+    g_free(json);
+    if(!json_variables) {
+        return TRUE;
+    }
+    gboolean r = sql_filter_vars_load_str_rules(cJSON_Print(json_variables)); 
+    g_free(json_variables);
+    return r;
+}   

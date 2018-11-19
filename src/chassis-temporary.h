@@ -24,4 +24,8 @@ gboolean sync_config_to_file(chassis *chas, gint *effected_rows);
 gboolean load_users_from_temporary_file(chassis *chas);
 gboolean save_users_to_temporary_file(chassis *chas);
 gboolean sync_users_to_file(chassis *chas, gint *effected_rows);
+
+//variables
+//gboolean load_variables_from_temporary_file(chassis *chas);
+gboolean save_variables_to_temporary_file(chassis *chas);
 #endif

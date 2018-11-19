@@ -3,6 +3,7 @@
 #include "chassis-plugin.h"
 #include "chassis-options-utils.h"
 #include "cetus-users.h"
+#include "sql-filter-variables.h"
 
 static gboolean
 rm_config_json_local(gchar *filename) {
@@ -491,5 +492,57 @@ gboolean sync_users_to_file(chassis *chas, gint *effected_rows) {
     }
     gboolean r = chassis_config_write_object(chas->priv->users->conf_manager, "users", json_users);
     g_free(json_users);
+    return r;
+}
+
+gboolean save_variables_to_temporary_file(chassis *chas) {
+    gchar *json_variables = NULL;
+    if(!parse_variables_to_json(&json_variables)) {
+        g_critical(G_STRLOC "parse variables to json failed");
+        return FALSE;
+    }
+    if(!json_variables || strlen(json_variables) == 0) {
+        if(json_variables) g_free(json_variables);
+        return TRUE;
+    }
+    cJSON *variables_root = cJSON_Parse(json_variables);
+    if(!variables_root) {
+        g_warning(G_STRLOC ":variables root is nil"); 
+        g_free(json_variables);
+        return TRUE;
+    }
+    g_free(json_variables);
+    cJSON *variables_node = cJSON_GetObjectItem(variables_root, "variables");
+    if(!variables_node) {
+        cJSON_Delete(variables_root);
+        return TRUE;
+    }
+    cJSON *variables_node_copy = cJSON_Duplicate(variables_node, 1);
+    cJSON_Delete(variables_root);
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC "read config from temporary file failed");
+        g_free(json_variables);
+        return FALSE;
+    }
+    cJSON *root = NULL;
+    if(!json) {
+        root = cJSON_CreateObject();
+    } else {
+        root = cJSON_Parse(json);
+        g_free(json);
+        if(!root) {
+            g_warning(G_STRLOC ":root is nil");
+            g_free(json);
+            return FALSE;
+        }
+    }
+    cJSON *variables_node_old = cJSON_GetObjectItem(root, "variables");
+    if(variables_node_old) {
+        cJSON_DeleteItemFromObject(root, "variables");
+    }
+    cJSON_AddItemToObject(root, "variables", variables_node_copy);
+    gboolean r = write_config_json_to_local(chas->temporary_file, cJSON_Print(root));
+    cJSON_Delete(root);
     return r;
 }

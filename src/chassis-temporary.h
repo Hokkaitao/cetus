@@ -13,7 +13,8 @@ typedef enum {
     VARIABLES_TYPE,
     VDB_TYPE,
     TABLES_TYPE,
-    SINGLE_TABLES_TYPE
+    SINGLE_TABLES_TYPE,
+    SHARDING_TYPE
 }config_type_t;
 //config
 gboolean load_config_from_temporary_file(chassis *chas);
@@ -29,5 +30,10 @@ gboolean sync_users_to_file(chassis *chas, gint *effected_rows);
 gboolean load_variables_from_temporary_file(chassis *chas);
 gboolean save_variables_to_temporary_file(chassis *chas);
 gboolean sync_variables_to_file(chassis *chas, gint *effected_rows);
+
+//sharding
+gboolean load_sharding_from_temporary_file(chassis *chas);
+gboolean save_sharding_to_temporary_file(chassis *chas);
+gboolean sync_sharding_to_file(chassis *chas, gint *effected_rows);
 
 #endif

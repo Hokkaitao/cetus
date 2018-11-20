@@ -143,5 +143,8 @@ gboolean shard_conf_write_json(chassis_config_t* conf_manager);
 
 gboolean shard_conf_add_single_table(const char* schema,
                                      const char* table, const char* group);
+gboolean parse_vdb_to_json(gchar **json);
+gboolean parse_tables_to_json(gchar **json);
+gboolean parse_single_tables_to_json(gchar **json);
 
 #endif /* __SHARDING_CONFIG_H__ */

@@ -2516,7 +2516,7 @@ assign_proxy_backend_addresses(const gchar *newval, gpointer param) {
             if(strcasecmp(p->option_grp_name, "shard") == 0) {
                 g_strfreev(p->config->backend_addresses);
                 p->config->backend_addresses = address;
-                network_backend_load_master(opt_param->chas, p->config->backend_addresses);
+                network_backend_load(opt_param->chas, p->config->backend_addresses, BACKEND_TYPE_RW);
                 break;
             }
         }
@@ -2539,7 +2539,7 @@ assign_proxy_read_only_backend_address(const gchar *newval, gpointer param) {
             if(strcasecmp(p->option_grp_name, "shard") == 0) {
                 g_strfreev(p->config->read_only_backend_addresses);
                 p->config->read_only_backend_addresses = address;
-                network_backend_load_slave(opt_param->chas, p->config->read_only_backend_addresses);
+                network_backend_load(opt_param->chas, p->config->read_only_backend_addresses, BACKEND_TYPE_RO);
                 break;
             }
         }

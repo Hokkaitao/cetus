@@ -1881,8 +1881,11 @@ void admin_create_vdb(network_mysqld_con* con, int id, GPtrArray* partitions,
         && shard_conf_add_vdb(vdb);
     if (ok) {
         g_message("Admin: %s", con->orig_sql->str);
-        shard_conf_write_json(con->srv->config_manager);
-        network_mysqld_con_send_ok(con->client);
+        if(save_sharding_to_temporary_file(con->srv)) {
+            network_mysqld_con_send_ok(con->client);
+        } else {
+            network_mysqld_con_send_error(con->client, C("add vdb success, but save it to temporary file failed"));
+        }
     } else {
         sharding_vdb_free(vdb);
         network_mysqld_con_send_error(con->client, C("failed to add vdb"));
@@ -1904,8 +1907,11 @@ void admin_create_sharded_table(network_mysqld_con* con, const char* schema,
     gboolean ok = shard_conf_add_sharded_table(t);
     if (ok) {
         g_message("Admin: %s", con->orig_sql->str);
-        shard_conf_write_json(con->srv->config_manager);
-        network_mysqld_con_send_ok(con->client);
+        if(save_sharding_to_temporary_file(con->srv)) {
+            network_mysqld_con_send_ok(con->client);
+        } else {
+            network_mysqld_con_send_error(con->client, C("add sharded table success, but save it to temporary file failed"));
+        }
     } else {
         network_mysqld_con_send_error(con->client, C("failed to add sharded table"));
     }
@@ -2107,8 +2113,11 @@ void admin_create_single_table(network_mysqld_con* con, const char* schema,
     gboolean ok = shard_conf_add_single_table(schema, table, group);
     if (ok) {
         g_message("Admin: %s", con->orig_sql->str);
-        shard_conf_write_json(con->srv->config_manager);
-        network_mysqld_con_send_ok_full(con->client, 1, 0, SERVER_STATUS_AUTOCOMMIT, 0);
+        if(save_sharding_to_temporary_file(con->srv)) {
+            network_mysqld_con_send_ok(con->client);
+        } else {
+            network_mysqld_con_send_error(con->client, C("add single table success, but save it to temporary file failed"));
+        }
     } else {
         network_mysqld_con_send_error(con->client, C("failed to add single table"));
     }
@@ -2273,12 +2282,14 @@ void load_config(network_mysqld_con* con) {
         con->ask_one_worker = 1;
         return;
     }
-    save_variables_to_temporary_file(con->srv);
     gboolean ret = load_config_from_temporary_file(con->srv);
     if(load_users_from_temporary_file(con->srv)) {
         ret ++;
     }
-    if(load_variables_from_temporary_file()) {
+    if(load_variables_from_temporary_file(con->srv)) {
+        ret ++;
+    }
+    if(load_sharding_from_temporary_file(con->srv)) {
         ret ++;
     }
     if(ret) {
@@ -2300,5 +2311,7 @@ void flush_config(network_mysqld_con *con) {
     sync_users_to_file(con->srv, &users_rows);
     gint variables_rows = 0;
     sync_variables_to_file(con->srv, &variables_rows);
-    network_mysqld_con_send_ok_full(con->client, config_rows + users_rows + variables_rows, 0, SERVER_STATUS_AUTOCOMMIT, 0);
+    gint sharding_rows = 0;
+    sync_sharding_to_file(con->srv, &sharding_rows);
+    network_mysqld_con_send_ok_full(con->client, config_rows + users_rows +  + sharding_rows + variables_rows, 0, SERVER_STATUS_AUTOCOMMIT, 0);
 }

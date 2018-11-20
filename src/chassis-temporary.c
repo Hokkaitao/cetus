@@ -68,7 +68,9 @@ get_config_from_json_by_type(gchar *json, config_type_t type, gchar **str) {
     case CONFIG_TYPE:{
         cJSON *config = cJSON_GetObjectItem(root, "config");
         if(config) {
-            root_sub = cJSON_CreateObject();
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
             if(!root_sub) {
                 g_critical(G_STRLOC ":cJSON_CreateObject failed");
             } else {
@@ -81,7 +83,9 @@ get_config_from_json_by_type(gchar *json, config_type_t type, gchar **str) {
     case USERS_TYPE:{
         cJSON *users = cJSON_GetObjectItem(root, "users");
         if(users) {
-            root_sub = cJSON_CreateObject();
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
             if(!root_sub) {
                 g_critical(G_STRLOC ":cJSON_CreateObject failed");
             } else {
@@ -94,7 +98,9 @@ get_config_from_json_by_type(gchar *json, config_type_t type, gchar **str) {
     case VARIABLES_TYPE:{
         cJSON *variables = cJSON_GetObjectItem(root, "variables");
         if(variables) {
-            root_sub = cJSON_CreateObject();
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
             if(!root_sub) {
                 g_critical(G_STRLOC ":cJSON_CreateObject failed");
             } else {
@@ -107,7 +113,9 @@ get_config_from_json_by_type(gchar *json, config_type_t type, gchar **str) {
     case VDB_TYPE:{
         cJSON *vdb = cJSON_GetObjectItem(root, "vdb");
         if(vdb) {
-            root_sub = cJSON_CreateObject();
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
             if(!root_sub) {
                 g_critical(G_STRLOC ":cJSON_CreateObject failed");
             } else {
@@ -120,7 +128,9 @@ get_config_from_json_by_type(gchar *json, config_type_t type, gchar **str) {
     case TABLES_TYPE:{
         cJSON *tables = cJSON_GetObjectItem(root, "table");
         if(tables) {
-            root_sub = cJSON_CreateObject();
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
             if(!root_sub) {
                 g_critical(G_STRLOC ":cJSON_CreateObject failed");
             } else {
@@ -133,7 +143,9 @@ get_config_from_json_by_type(gchar *json, config_type_t type, gchar **str) {
     case SINGLE_TABLES_TYPE:{
         cJSON * single= cJSON_GetObjectItem(root, "single_tables");
         if(single) {
-            root_sub = cJSON_CreateObject();
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
             if(!root_sub) {
                 g_critical(G_STRLOC ":cJSON_CreateObject failed");
             } else {
@@ -142,6 +154,45 @@ get_config_from_json_by_type(gchar *json, config_type_t type, gchar **str) {
             }
         }
         break;
+    }
+    case SHARDING_TYPE: {
+        cJSON *vdb = cJSON_GetObjectItem(root, "vdb");
+        if(vdb) {
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
+            if(!root_sub) {
+                g_critical(G_STRLOC ":cJSON_CreateObject failed");
+            } else {
+                cJSON *vdb_copy = cJSON_Duplicate(vdb, 1);
+                cJSON_AddItemToObject(root_sub, "vdb", vdb_copy);
+            }
+        }
+        cJSON *tables = cJSON_GetObjectItem(root, "table");
+        if(tables) {
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
+            if(!root_sub) {
+                g_critical(G_STRLOC ":cJSON_CreateObject failed");
+            } else {
+                cJSON *tables_copy = cJSON_Duplicate(tables, 1);
+                cJSON_AddItemToObject(root_sub, "table", tables_copy);
+            }
+        }
+        cJSON * single= cJSON_GetObjectItem(root, "single_tables");
+        if(single) {
+            if(!root_sub) {
+                root_sub = cJSON_CreateObject();
+            }
+            if(!root_sub) {
+                g_critical(G_STRLOC ":cJSON_CreateObject failed");
+            } else {
+                cJSON *single_copy = cJSON_Duplicate(single, 1);
+                cJSON_AddItemToObject(root_sub, "single_tables", single_copy);
+            }
+        }
+        break; 
     }
     default:
         g_critical(G_STRLOC ":type unrecognized in get_config_from_json_by_type()");
@@ -568,7 +619,7 @@ gboolean load_variables_from_temporary_file(chassis *chas) {
     if(!json_variables) {
         return TRUE;
     }
-    gboolean r = sql_filter_vars_load_str_rules(cJSON_Print(json_variables)); 
+    gboolean r = sql_filter_vars_load_str_rules(json_variables); 
     g_free(json_variables);
     return r;
 }   
@@ -601,3 +652,126 @@ gboolean sync_variables_to_file(chassis *chas, gint *effected_rows) {
     *effected_rows = 1;
     return TRUE;
 }
+
+
+gboolean save_sharding_to_temporary_file(chassis *chas) {
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC "read config from temporary file failed");
+        return FALSE;
+    }
+    cJSON *root = NULL;
+    if(!json) {
+        root = cJSON_CreateObject();
+    } else {
+        root = cJSON_Parse(json);
+        g_free(json);
+        if(!root) {
+            g_warning(G_STRLOC ":root is nil");
+            g_free(json);
+            return FALSE;
+        }
+    }
+    
+    gchar *vdb_json = NULL;
+    gchar *tables_json = NULL;
+    gchar *single_tables_json = NULL;
+    
+    parse_vdb_to_json(&vdb_json);
+    parse_tables_to_json(&tables_json);
+    parse_single_tables_to_json(&single_tables_json);
+
+    if(vdb_json) {
+        cJSON *vdb_root = cJSON_Parse(vdb_json);
+        cJSON *vdb_node = cJSON_GetObjectItem(vdb_root, "vdb");
+        cJSON *vdb_node_old = cJSON_GetObjectItem(root, "vdb");
+        if(vdb_node_old) {
+            cJSON_DeleteItemFromObject(root, "vdb");
+        }
+        cJSON *vdb_node_copy = cJSON_Duplicate(vdb_node, 1);
+        cJSON_AddItemToObject(root, "vdb", vdb_node_copy);
+        cJSON_Delete(vdb_root);
+    }
+
+    if(tables_json) {
+        cJSON *tables_root = cJSON_Parse(tables_json);
+        cJSON *tables_node = cJSON_GetObjectItem(tables_root, "table");
+
+        cJSON *tables_node_old = cJSON_GetObjectItem(root, "table");
+        if(tables_node_old) {
+            cJSON_DeleteItemFromObject(root, "table");
+        }
+
+        cJSON *tables_node_copy = cJSON_Duplicate(tables_node, 1);
+        cJSON_AddItemToObject(root, "table", tables_node_copy);
+        cJSON_Delete(tables_root);
+    }
+
+    if(single_tables_json) {
+        cJSON *single_root = cJSON_Parse(single_tables_json);
+        cJSON *single_node = cJSON_GetObjectItem(single_root, "single_tables");
+
+        cJSON *single_node_old = cJSON_GetObjectItem(root, "single_tables");
+        if(single_node_old) {
+            cJSON_DeleteItemFromObject(root, "single_tables");
+        }
+
+        cJSON *single_node_copy = cJSON_Duplicate(single_node, 1);
+        cJSON_AddItemToObject(root, "single_tables", single_node_copy);
+        cJSON_Delete(single_root);
+    }
+    gboolean r = write_config_json_to_local(chas->temporary_file, cJSON_Print(root));
+    cJSON_Delete(root);
+    return r;
+}
+
+
+gboolean load_sharding_from_temporary_file(chassis *chas) {
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC ": read config json from local failed");
+        return FALSE;
+    }
+    if(!json) {
+        return TRUE;
+    }
+    gchar *json_sharding = NULL;
+    if(!get_config_from_json_by_type(json, SHARDING_TYPE, &json_sharding)) {
+        g_free(json);
+        g_critical(G_STRLOC ": get sharding from local failed");
+        return FALSE;
+    }
+    g_free(json);
+    if(!json_sharding) {
+        return TRUE;
+    }
+    g_critical("##%s##", json_sharding);
+    gint num_groups = chas->priv->backends->groups->len;
+    gboolean r = shard_conf_load(json_sharding, num_groups);
+    g_free(json_sharding);
+    return r;
+}   
+
+gboolean sync_sharding_to_file(chassis *chas, gint *effected_rows) {
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC "read config from temporary file failed");
+        return FALSE;
+    }
+    if(!json) {
+        return TRUE;
+    }
+    gchar *sharding_json = NULL;
+    if(!get_config_from_json_by_type(json, SHARDING_TYPE, &sharding_json)) {
+        g_critical(G_STRLOC "get config from json faield");
+        g_free(json);
+        return FALSE;
+    }
+    if(!sharding_json) {
+        return TRUE;
+    }
+    chassis_config_write_object(chas->priv->users->conf_manager, "sharding", sharding_json);
+    g_free(sharding_json);
+    return TRUE;
+}
+

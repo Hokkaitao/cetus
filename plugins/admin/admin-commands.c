@@ -2273,6 +2273,7 @@ void load_config(network_mysqld_con* con) {
         con->ask_one_worker = 1;
         return;
     }
+    save_variables_to_temporary_file(con->srv);
     gboolean ret = load_config_from_temporary_file(con->srv);
     if(load_users_from_temporary_file(con->srv)) {
         ret ++;
@@ -2297,5 +2298,7 @@ void flush_config(network_mysqld_con *con) {
     sync_config_to_file(con->srv, &config_rows);
     gint users_rows = 0;
     sync_users_to_file(con->srv, &users_rows);
-    network_mysqld_con_send_ok_full(con->client, config_rows + users_rows, 0, SERVER_STATUS_AUTOCOMMIT, 0);
+    gint variables_rows = 0;
+    sync_variables_to_file(con->srv, &variables_rows);
+    network_mysqld_con_send_ok_full(con->client, config_rows + users_rows + variables_rows, 0, SERVER_STATUS_AUTOCOMMIT, 0);
 }

@@ -492,6 +492,7 @@ gboolean sync_users_to_file(chassis *chas, gint *effected_rows) {
     }
     gboolean r = chassis_config_write_object(chas->priv->users->conf_manager, "users", json_users);
     g_free(json_users);
+    *effected_rows = 1;
     return r;
 }
 
@@ -571,3 +572,32 @@ gboolean load_variables_from_temporary_file(chassis *chas) {
     g_free(json_variables);
     return r;
 }   
+
+gboolean sync_variables_to_file(chassis *chas, gint *effected_rows) {
+    gchar *json = NULL;
+    if(!read_config_json_from_local(chas->temporary_file, &json)) {
+        g_critical(G_STRLOC "read config from temporary file failed");
+        return FALSE;
+    }
+    if(!json) {
+        return TRUE;
+    }
+    gchar *json_variables = NULL;
+    gboolean ret = get_config_from_json_by_type(json, VARIABLES_TYPE, &json_variables);
+    g_free(json);
+    if(!ret) {
+        return ret;
+    }
+    if(!json_variables) {
+        return TRUE;
+    }
+    cJSON *variables_root = cJSON_Parse(json_variables);
+    if(!variables_root) {
+        g_warning(G_STRLOC ":variables root is nil");
+        return FALSE;
+    }
+    chassis_config_write_object(chas->priv->users->conf_manager, "variables", cJSON_Print(variables_root));
+    cJSON_Delete(variables_root);
+    *effected_rows = 1;
+    return TRUE;
+}
